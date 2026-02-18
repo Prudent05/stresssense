@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StressSense — Assessment</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-white text-slate-900">
+<header class="border-b border-slate-200">
+  <div class="max-w-3xl mx-auto px-6 py-6 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold">S</div>
+      <div class="text-2xl font-semibold">StressSense</div>
+    </div>
+    <nav class="flex gap-6 text-sm">
+      <a class="text-slate-500 hover:text-slate-900" href="/">Dashboard</a>
+      <a class="font-medium text-slate-900" href="/assessment">Assessment</a>
+      <a class="text-slate-500 hover:text-slate-900" href="/what-if">What-If</a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto px-6 py-10 space-y-8">
+  <div>
+    <h1 class="text-4xl font-semibold">Financial Assessment</h1>
+    <p class="text-lg text-slate-600 mt-2">Answer 4 questions. We’ll return your score + action plan.</p>
+  </div>
+
+  <form id="form" class="space-y-6">
+    <section class="rounded-3xl border border-slate-100 shadow-lg p-8">
+      <label class="block">
+        <div class="text-lg font-semibold">Credit Utilization</div>
+        <div class="text-slate-600 mt-1">What % of your credit limit are you using?</div>
+        <div class="mt-4 flex items-center gap-3">
+          <input id="util" type="number" min="0" max="100" value="35"
+            class="w-full px-6 py-4 text-2xl font-semibold border-2 border-slate-200 rounded-2xl focus:border-blue-600 focus:outline-none" />
+          <div class="text-2xl font-semibold text-slate-600">%</div>
+        </div>
+      </label>
+    </section>
+
+    <section class="rounded-3xl border border-slate-100 shadow-lg p-8">
+      <label class="block">
+        <div class="text-lg font-semibold">Missed Payments</div>
+        <div class="text-slate-600 mt-1">How many payments have you missed?</div>
+        <input id="missed" type="number" min="0" max="12" value="0"
+          class="mt-4 w-full px-6 py-4 text-2xl font-semibold border-2 border-slate-200 rounded-2xl focus:border-blue-600 focus:outline-none" />
+      </label>
+    </section>
+
+    <section class="rounded-3xl border border-slate-100 shadow-lg p-8">
+      <div class="text-lg font-semibold">Spending pattern</div>
+      <div class="text-slate-600 mt-1">How much does your spending change month-to-month?</div>
+      <div class="mt-4 grid grid-cols-3 gap-3">
+        <button type="button" data-vol="20" class="volBtn py-4 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200">Low</button>
+        <button type="button" data-vol="50" class="volBtn py-4 rounded-xl font-semibold bg-blue-600 text-white shadow-lg">Medium</button>
+        <button type="button" data-vol="80" class="volBtn py-4 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200">High</button>
+      </div>
+      <input id="vol" type="hidden" value="50" />
+    </section>
+
+    <section class="rounded-3xl border border-slate-100 shadow-lg p-8">
+      <div class="text-lg font-semibold">Income consistency</div>
+      <div class="text-slate-600 mt-1">How stable and predictable is your income?</div>
+      <div class="mt-4 grid grid-cols-3 gap-3">
+        <button type="button" data-inc="20" class="incBtn py-4 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200">Low</button>
+        <button type="button" data-inc="50" class="incBtn py-4 rounded-xl font-semibold bg-blue-600 text-white shadow-lg">Medium</button>
+        <button type="button" data-inc="80" class="incBtn py-4 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200">High</button>
+      </div>
+      <input id="inc" type="hidden" value="50" />
+    </section>
+
+    <button class="w-full rounded-2xl bg-blue-600 text-white py-5 font-semibold text-lg hover:bg-blue-700 transition shadow-lg">
+      Calculate My Score
+    </button>
+  </form>
+
+  <section id="result" class="hidden rounded-3xl bg-slate-50 p-8">
+    <div class="flex items-center justify-between">
+      <div>
+        <div class="text-slate-600">Your Stress Score</div>
+        <div id="score" class="text-6xl font-semibold text-blue-600 mt-2">—</div>
+        <div id="prob" class="text-slate-500 mt-2 text-sm">Predicted risk: —</div>
+      </div>
+      <div id="tier" class="px-6 py-3 rounded-full font-semibold bg-slate-100 text-slate-700">—</div>
+    </div>
+
+    <div class="mt-6">
+      <div class="font-semibold">Top reasons</div>
+      <ul id="reasons" class="mt-3 space-y-2 text-slate-700"></ul>
+    </div>
+
+    <div class="mt-6">
+      <div class="font-semibold">Recommended actions</div>
+      <ol id="actions" class="mt-3 space-y-2 text-slate-700"></ol>
+    </div>
+
+    <div class="mt-8 grid grid-cols-2 gap-3">
+      <a href="/" class="rounded-2xl bg-blue-600 text-white py-4 font-semibold text-center hover:bg-blue-700 transition">Go to Dashboard</a>
+      <a href="/what-if" class="rounded-2xl bg-slate-200 text-slate-900 py-4 font-semibold text-center hover:bg-slate-300 transition">Try What-If</a>
+    </div>
+  </section>
+</main>
+
+<script>
+  function tierStyles(tier){
+    if (tier === "Stable") return {badge:"bg-blue-100 text-blue-700", score:"text-blue-600"};
+    if (tier === "Watchlist") return {badge:"bg-amber-100 text-amber-700", score:"text-amber-600"};
+    return {badge:"bg-red-100 text-red-700", score:"text-red-600"};
+  }
+
+  // toggle buttons
+  document.querySelectorAll(".volBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("vol").value = btn.dataset.vol;
+      document.querySelectorAll(".volBtn").forEach(b => b.className = "volBtn py-4 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200");
+      btn.className = "volBtn py-4 rounded-xl font-semibold bg-blue-600 text-white shadow-lg";
+    });
+  });
+
+  document.querySelectorAll(".incBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.getElementById("inc").value = btn.dataset.inc;
+      document.querySelectorAll(".incBtn").forEach(b => b.className = "incBtn py-4 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200");
+      btn.className = "incBtn py-4 rounded-xl font-semibold bg-blue-600 text-white shadow-lg";
+    });
+  });
+
+  function saveInputs(inputs){
+    localStorage.setItem("stresssense_inputs_v1", JSON.stringify(inputs));
+  }
+
+  async function onSubmit(e){
+    e.preventDefault();
+
+    const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+
+    const inputs = {
+      utilization_pct: clamp(Number(document.getElementById("util").value), 0, 100),
+      missed_payments: clamp(Number(document.getElementById("missed").value), 0, 12),
+      spending_volatility: clamp(Number(document.getElementById("vol").value), 0, 100),
+      income_stability: clamp(Number(document.getElementById("inc").value), 0, 100),
+    };
+
+    saveInputs(inputs);
+
+    const res = await fetch("/predict", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ inputs })
+    });
+    const data = await res.json();
+
+    const score = data.stress_score ?? 0;
+    const tier = data.stress_tier ?? "Stable";
+    const s = tierStyles(tier);
+
+    document.getElementById("result").classList.remove("hidden");
+    document.getElementById("score").textContent = score;
+    document.getElementById("score").className = `text-6xl font-semibold mt-2 ${s.score}`;
+    document.getElementById("tier").textContent = tier;
+    document.getElementById("tier").className = `px-6 py-3 rounded-full font-semibold ${s.badge}`;
+    document.getElementById("prob").textContent = `Predicted risk: ${((data.prob_default ?? 0) * 100).toFixed(1)}%`;
+
+    const reasonsEl = document.getElementById("reasons");
+    reasonsEl.innerHTML = "";
+    (data.top_reasons || []).forEach(r => reasonsEl.innerHTML += `<li>• ${r}</li>`);
+    if (!(data.top_reasons || []).length) reasonsEl.innerHTML = `<li class="text-slate-500">No reasons returned.</li>`;
+
+    const actionsEl = document.getElementById("actions");
+    actionsEl.innerHTML = "";
+    (data.actions || []).forEach((a,i) => actionsEl.innerHTML += `<li><span class="font-semibold">${i+1}.</span> ${a}</li>`);
+    if (!(data.actions || []).length) actionsEl.innerHTML = `<li class="text-slate-500">No actions returned.</li>`;
+  }
+
+  document.getElementById("form").addEventListener("submit", onSubmit);
+</script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StressSense — What-If</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-white text-slate-900">
+  <div class="max-w-4xl mx-auto px-5 py-8">
+
+    <header class="flex items-start justify-between gap-4">
+      <div>
+        <a href="/" class="text-sm font-semibold text-slate-700 hover:text-slate-900">← Back</a>
+        <h1 class="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight">What-If Simulator</h1>
+        <p class="mt-1 text-sm text-slate-600">
+          Slide values and see how your score changes.
+        </p>
+      </div>
+      <button onclick="resetAll()"
+        class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50">
+        Reset
+      </button>
+    </header>
+
+    <main class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- Controls -->
+      <section class="rounded-2xl border border-slate-200 p-5">
+        <h2 class="text-lg font-bold">Adjust</h2>
+
+        <div class="mt-5 space-y-5">
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-semibold">Credit utilization</label>
+              <span id="uVal" class="text-sm font-bold">35%</span>
+            </div>
+            <input id="u" type="range" min="0" max="100" value="35" class="w-full mt-2" oninput="update(); debounce();"/>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-semibold">Missed payments</label>
+              <span id="mVal" class="text-sm font-bold">0</span>
+            </div>
+            <input id="m" type="range" min="0" max="12" value="0" class="w-full mt-2" oninput="update(); debounce();"/>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-semibold">Spending changes</label>
+              <span id="vVal" class="text-sm font-bold">50</span>
+            </div>
+            <!-- 0=Low, 1=Medium, 2=High -->
+            <input id="v" type="range" min="0" max="2" value="1" class="w-full mt-2" oninput="update(); debounce();"/>
+            <div class="mt-2 flex justify-between text-xs text-slate-500">
+              <span>Low</span><span>Medium</span><span>High</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-semibold">Income consistency</label>
+              <span id="iVal" class="text-sm font-bold">80</span>
+            </div>
+            <!-- 0=Low, 1=Medium, 2=High -->
+            <input id="i" type="range" min="0" max="2" value="2" class="w-full mt-2" oninput="update(); debounce();"/>
+            <div class="mt-2 flex justify-between text-xs text-slate-500">
+              <span>Low</span><span>Medium</span><span>High</span>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="recalc()"
+          class="mt-6 w-full rounded-xl bg-slate-900 text-white px-4 py-3 text-sm font-semibold hover:bg-slate-800">
+          Recalculate
+        </button>
+      </section>
+
+      <!-- Output -->
+      <section class="rounded-2xl border border-slate-200 p-5">
+        <h2 class="text-lg font-bold">Result</h2>
+
+        <div class="mt-4 rounded-2xl bg-slate-50 p-5 border border-slate-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-slate-600">Stress score</p>
+              <p id="score" class="text-4xl font-extrabold">—</p>
+            </div>
+            <span id="tier" class="rounded-full bg-slate-200 px-3 py-1 text-sm font-semibold">—</span>
+          </div>
+
+          <div class="mt-4">
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-slate-600">Default probability</p>
+              <p id="prob" class="text-sm font-bold">—</p>
+            </div>
+            <div class="mt-2 h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div id="bar" class="h-2 rounded-full bg-slate-900 w-0"></div>
+            </div>
+          </div>
+        </div>
+
+        <p class="mt-4 text-sm text-slate-600">
+          Tip: reducing missed payments and utilization usually helps the most.
+        </p>
+      </section>
+    </main>
+  </div>
+
+<script>
+  let t = null;
+
+  function tierColor(tier){
+    if (tier === "Stable") return ["bg-blue-100","text-blue-900"];
+    if (tier === "Watchlist") return ["bg-amber-100","text-amber-900"];
+    return ["bg-red-100","text-red-900"];
+  }
+
+  function setBar(prob){
+    const pct = Math.max(0, Math.min(100, Math.round(prob * 100)));
+    document.getElementById("bar").style.width = pct + "%";
+  }
+
+  function levelToPct(x){
+    if (Number(x) === 0) return 20;   // low
+    if (Number(x) === 1) return 50;   // medium
+    return 80;                        // high
+  }
+
+  function update(){
+    document.getElementById("uVal").textContent = document.getElementById("u").value + "%";
+    document.getElementById("mVal").textContent = document.getElementById("m").value;
+
+    const vLevel = document.getElementById("v").value;
+    const iLevel = document.getElementById("i").value;
+
+    document.getElementById("vVal").textContent = levelToPct(vLevel);
+    document.getElementById("iVal").textContent = levelToPct(iLevel);
+  }
+
+  function debounce(){
+    if (t) clearTimeout(t);
+    t = setTimeout(recalc, 220);
+  }
+
+  async function recalc(){
+    const payload = {
+      inputs: {
+        utilization_pct: Number(document.getElementById("u").value),
+        missed_payments: Number(document.getElementById("m").value),
+        spending_volatility: levelToPct(document.getElementById("v").value),
+        income_stability: levelToPct(document.getElementById("i").value),
+      }
+    };
+
+    const res = await fetch("/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    document.getElementById("score").textContent = data.stress_score ?? "—";
+    document.getElementById("prob").textContent = Math.round((data.prob_default ?? 0) * 100) + "%";
+    setBar(data.prob_default ?? 0);
+
+    const tier = document.getElementById("tier");
+    const [bg, tx] = tierColor(data.stress_tier);
+    tier.className = `rounded-full px-3 py-1 text-sm font-semibold ${bg} ${tx}`;
+    tier.textContent = data.stress_tier ?? "—";
+  }
+
+  function resetAll(){
+    document.getElementById("u").value = 35;
+    document.getElementById("m").value = 0;
+    document.getElementById("v").value = 1; // medium
+    document.getElementById("i").value = 2; // high
+    update();
+    recalc();
+  }
+
+  update();
+  recalc();
+</script>
+</body>
+</html>

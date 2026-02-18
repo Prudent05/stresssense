@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node/Vite (if any)
+node_modules/
+dist/
+
+# Models + data (do NOT push big/private files)
+data/
+models/
+*.parquet
+*.csv
+*.joblib
+
+# Logs
+*.log

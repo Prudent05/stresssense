@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StressSense — Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-white text-slate-900">
+  <!-- Header -->
+  <header class="border-b border-slate-200">
+    <div class="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold">S</div>
+        <div>
+          <div class="text-2xl font-semibold">StressSense</div>
+          <div class="text-sm text-slate-500">Early financial stress signal</div>
+        </div>
+      </div>
+      <nav class="flex gap-6 text-sm">
+        <a class="font-medium text-slate-900" href="/">Dashboard</a>
+        <a class="text-slate-500 hover:text-slate-900" href="/assessment">Assessment</a>
+        <a class="text-slate-500 hover:text-slate-900" href="/what-if">What-If</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-6 py-10 space-y-8">
+    <div>
+      <h1 class="text-4xl font-semibold">Your Financial Wellness</h1>
+      <p class="text-lg text-slate-600 mt-2">A clear score + an action plan you can use.</p>
+    </div>
+
+    <!-- Score card -->
+    <section class="rounded-3xl border border-slate-100 shadow-lg p-10">
+      <div class="flex items-start justify-between gap-6">
+        <div>
+          <p class="text-slate-600">Your Stress Score</p>
+          <div id="score" class="text-7xl font-semibold mt-2 text-blue-600">—</div>
+          <p class="text-slate-500 mt-1">out of 100</p>
+          <p id="prob" class="text-slate-500 mt-2 text-sm">Predicted risk: —</p>
+        </div>
+
+        <div id="tierBadge" class="px-6 py-3 rounded-full font-semibold bg-slate-100 text-slate-700">
+          —
+        </div>
+      </div>
+
+      <div class="mt-8">
+        <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+          <div id="bar" class="h-full bg-blue-600" style="width:0%"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- What this means -->
+    <section class="rounded-3xl bg-slate-50 p-8">
+      <h2 class="text-xl font-semibold">What this means</h2>
+      <ul id="reasons" class="mt-4 space-y-2 text-slate-700">
+        <li class="text-slate-500">Run an assessment to see your reasons.</li>
+      </ul>
+    </section>
+
+    <!-- Recommended actions -->
+    <section class="rounded-3xl border border-slate-100 shadow-lg p-8">
+      <h2 class="text-xl font-semibold">Recommended Actions</h2>
+      <ol id="actions" class="mt-5 space-y-3 text-slate-700">
+        <li class="text-slate-500">Complete an assessment to get your action plan.</li>
+      </ol>
+    </section>
+
+    <section class="grid md:grid-cols-2 gap-4">
+      <a href="/assessment" class="rounded-2xl bg-blue-600 text-white py-4 font-semibold text-center hover:bg-blue-700 transition">
+        Update Assessment
+      </a>
+      <a href="/what-if" class="rounded-2xl bg-slate-100 text-slate-900 py-4 font-semibold text-center hover:bg-slate-200 transition">
+        Try What-If Simulator
+      </a>
+    </section>
+  </main>
+
+<script>
+  function tierStyles(tier){
+    if (tier === "Stable") return {badge:"bg-blue-100 text-blue-700", score:"text-blue-600", bar:"bg-blue-600"};
+    if (tier === "Watchlist") return {badge:"bg-amber-100 text-amber-700", score:"text-amber-600", bar:"bg-amber-600"};
+    return {badge:"bg-red-100 text-red-700", score:"text-red-600", bar:"bg-red-600"};
+  }
+
+  function getSavedInputs(){
+    try {
+      const raw = localStorage.getItem("stresssense_inputs_v1");
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  async function loadDashboard(){
+    const saved = getSavedInputs();
+    if (!saved) {
+      document.getElementById("reasons").innerHTML =
+        `<li class="text-slate-500">No saved assessment yet. Go to Assessment to generate your score.</li>`;
+      document.getElementById("actions").innerHTML =
+        `<li class="text-slate-500">Complete an assessment to get your action plan.</li>`;
+      return;
+    }
+
+    try {
+      const payload = { inputs: saved };
+      const res = await fetch("/predict", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error("Prediction failed");
+      const data = await res.json();
+
+      const scoreEl = document.getElementById("score");
+      const probEl = document.getElementById("prob");
+      const badgeEl = document.getElementById("tierBadge");
+      const barEl = document.getElementById("bar");
+      const reasonsEl = document.getElementById("reasons");
+      const actionsEl = document.getElementById("actions");
+
+      const score = data.stress_score ?? 0;
+      const tier = data.stress_tier ?? "Stable";
+      const s = tierStyles(tier);
+
+      scoreEl.textContent = score;
+      scoreEl.className = `text-7xl font-semibold mt-2 ${s.score}`;
+      badgeEl.textContent = tier;
+      badgeEl.className = `px-6 py-3 rounded-full font-semibold ${s.badge}`;
+      barEl.style.width = `${score}%`;
+      barEl.className = `h-full ${s.bar}`;
+      probEl.textContent = `Predicted risk: ${((data.prob_default ?? 0) * 100).toFixed(1)}%`;
+
+      reasonsEl.innerHTML = "";
+      (data.top_reasons || []).forEach(r => reasonsEl.innerHTML += `<li>• ${r}</li>`);
+      if (!(data.top_reasons || []).length) reasonsEl.innerHTML = `<li class="text-slate-500">No reasons returned.</li>`;
+
+      actionsEl.innerHTML = "";
+      (data.actions || []).forEach((a,i) => actionsEl.innerHTML += `<li><span class="font-semibold">${i+1}.</span> ${a}</li>`);
+      if (!(data.actions || []).length) actionsEl.innerHTML = `<li class="text-slate-500">No actions returned.</li>`;
+    } catch (e) {
+      document.getElementById("reasons").innerHTML =
+        `<li class="text-slate-500">Could not load prediction. Try again.</li>`;
+      document.getElementById("actions").innerHTML =
+        `<li class="text-slate-500">Go to Assessment and re-run your inputs.</li>`;
+    }
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>
